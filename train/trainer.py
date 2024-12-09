@@ -69,9 +69,18 @@ class Trainer:
         return ls / len(loader), accuracy, precision, recall, f1, map, ndcg
 
     def run(self):
-        # Prepare data
-        train_loader = DataLoader(RatingsDataset('data/train.csv'), batch_size=128, shuffle=True)
-        val_loader = DataLoader(RatingsDataset('data/val.csv'), batch_size=128, shuffle=False)
+        
+        # Load the dataset
+        dataset = RatingsDataset(datafile='data/movielens100k.csv')
+        
+        # Split into train, validation, and test sets
+        train_dataset, val_dataset, test_dataset = dataset.train_test_val_split(train_ratio=0.6, val_ratio=0.2)
+        
+        # Create DataLoaders
+        train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=128, shuffle=False)
+
+        
 
         # Choose model
         if self.model_name == "model1":
@@ -94,6 +103,9 @@ class Trainer:
 
             # Record metrics
             self.history['train_loss'].append(train_loss)
+            self.history['train_acc'].append(train_acc)
+            self.history['train_map'].append(train_map)
+            self.history['train_ndcg'].append(train_ndcg)
             self.history['val_accuracies'].append(val_acc)
             self.history['val_precisions'].append(val_prec)
             self.history['val_recalls'].append(val_rec)
@@ -102,7 +114,7 @@ class Trainer:
             self.history['val_ndcgs'].append(val_ndcg)
 
             print(f"Epoch {epoch}/{self.epochs} | Time: {end_time - start_time:.2f}s | "
-                  f"Train Loss: {train_loss:.4f} | Val Accuracy: {val_acc:.4f} | Val MAP: {val_map:.4f} | Val NDCG: {val_ndcg:.4f}")
+                  f"Train Loss: {train_loss:.4f} |Train Accuracy: {train_acc:.4f} |Val Accuracy: {val_acc:.4f} | Val MAP: {val_map:.4f} | Val NDCG: {val_ndcg:.4f}")
 
     def compare_models(self, history_model1, history_model2):
         # Compare metrics
@@ -121,6 +133,7 @@ class Trainer:
         print("Model 2 - NDCG:", history_model2['val_ndcgs'][-1])
 
 if __name__ == '__main__':
+    
     trainer = Trainer(model_name="model1", user_number=6040, movie_number=3952, epochs=10)
     trainer.run()
     trainer.compare_models(trainer.history, trainer.history)
