@@ -2,7 +2,7 @@ import argparse
 import torch
 from torch.utils.data import DataLoader
 from utils.load_data import RatingsDataset
-from train.trainer import Trainer  # Import the Trainer class from your Trainer file
+from trainer import Trainer  # Import the Trainer class from your Trainer file
 
 def main(args):
     # Load dataset
@@ -26,7 +26,7 @@ def main(args):
     trainer = Trainer(model_name, user_number, movie_number, epochs)
 
     # Run the training and evaluation
-    trainer.run()
+    trainer.run(train_loader, val_loader, test_loader)
 
 if __name__ == "__main__":
     # Argument parser for dataset file and training parameters

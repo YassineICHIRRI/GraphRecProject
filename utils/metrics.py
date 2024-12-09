@@ -1,53 +1,49 @@
+# metrics.py
+
 import numpy as np
-from sklearn.metrics import roc_auc_score
 
-def precision_at_k(r, k):
-    r = np.asarray(r)[:k]
-    return np.mean(r)
+def precision_at_k(y_true, k):
+    """Calculate precision at k for recommendation."""
+    if len(y_true) == 0:
+        return 0
+    # Ensure k is not larger than the number of true ratings
+    k = min(k, len(y_true))
+    top_k_predictions = np.argsort(y_true)[-k:]
+    relevant_items = np.sum(y_true[top_k_predictions])
+    precision = relevant_items / k
+    return precision
 
-def average_precision(r, cut):
-    r = np.asarray(r)
-    out = [precision_at_k(r, k + 1) for k in range(cut) if r[k]]
-    if not out:
-        return 0.
-    return np.sum(out) / float(min(cut, np.sum(r)))
+def recall_at_k(y_true, k, num_relevant):
+    """Calculate recall at k for recommendation."""
+    if num_relevant == 0:
+        return 0
+    k = min(k, len(y_true))
+    top_k_predictions = np.argsort(y_true)[-k:]
+    relevant_items = np.sum(y_true[top_k_predictions])
+    recall = relevant_items / num_relevant
+    return recall
 
-def mean_average_precision(rs):
-    return np.mean([average_precision(r) for r in rs])
+def F1(precision, recall):
+    """Calculate F1 score given precision and recall."""
+    if precision + recall == 0:
+        return 0
+    return 2 * (precision * recall) / (precision + recall)
 
-def dcg_at_k(r, k, method=1):
-    r = np.asfarray(r)[:k]
-    if r.size:
-        if method == 0:
-            return r[0] + np.sum(r[1:] / np.log2(np.arange(2, r.size + 1)))
-        elif method == 1:
-            return np.sum(r / np.log2(np.arange(2, r.size + 2)))
-        else:
-            raise ValueError('method must be 0 or 1.')
-    return 0.
+def mean_average_precision(y_true):
+    """Calculate mean average precision for recommendation."""
+    precision_at_i = [precision_at_k(y_true, i + 1) for i in range(len(y_true))]
+    return np.mean(precision_at_i)
 
-def ndcg_at_k(r, k, method=1):
-    dcg_max = dcg_at_k(sorted(r, reverse=True), k, method)
-    if not dcg_max:
-        return 0.
-    return dcg_at_k(r, k, method) / dcg_max
-
-def recall(rank, ground_truth, N):
-    return len(set(rank[:N]) & set(ground_truth)) / float(len(set(ground_truth)))
-
-def recall_at_k(r, k, all_pos_num):
-    r = np.asfarray(r)[:k]
-    return np.sum(r) / all_pos_num
-
-def hit_at_k(r, k):
-    r = np.array(r)[:k]
-    return 1. if np.sum(r) > 0 else 0.
-
-def F1(pre, rec):
-    return (2.0 * pre * rec) / (pre + rec) if pre + rec > 0 else 0.
-
-def auc(ground_truth, prediction):
-    try:
-        return roc_auc_score(y_true=ground_truth, y_score=prediction)
-    except Exception:
-        return 0.
+def ndcg_at_k(y_true, k):
+    """Calculate normalized discounted cumulative gain at k for recommendation."""
+    if len(y_true) == 0:
+        return 0
+    # Discounted cumulative gain
+    dcg = 0
+    for i in range(min(k, len(y_true))):
+        dcg += (2**y_true[i] - 1) / np.log2(i + 2)
+    # Ideal DCG (sorted in descending order)
+    ideal_dcg = sum((2**rating - 1) / np.log2(i + 2) for i, rating in enumerate(sorted(y_true, reverse=True)))
+    # NDCG
+    ndcg = dcg / ideal_dcg if ideal_dcg > 0 else 0
+    return ndcg
