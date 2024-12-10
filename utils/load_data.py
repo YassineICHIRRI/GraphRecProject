@@ -32,7 +32,7 @@ class RatingsDataset(Dataset):
             'movie': self.movie_ids[idx],
             'rating': self.ratings[idx]
         }
-
+    
     def get_user_number(self):
         return self.userNums
 

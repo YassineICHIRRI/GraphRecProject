@@ -1,9 +1,8 @@
-# metrics.py
-
 import time
+import matplotlib.pyplot as plt 
 import numpy as np
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from models.NCF import NCF
 from models.NGCF import NGCF
 from utils.load_data import RatingsDataset
@@ -18,17 +17,10 @@ class Trainer:
         self.user_number = user_number
         self.movie_number = movie_number
         self.epochs = epochs
-        self.history = {'train_loss': [], 'train_acc': [], 'train_map': [], 'train_ndcg': [],
-                        'val_accuracies': [], 'val_precisions': [], 'val_recalls': [], 'val_f1_scores': [],
+        self.history = {'train_loss': [], 'train_acc': [], 'train_map': [], 'train_ndcg': [], 
+                        'val_accuracies': [], 'val_precisions': [], 'val_recalls': [], 'val_f1_scores': [], 
                         'val_maps': [], 'val_ndcgs': []}
-        self.device = self.get_device()
-
-    def get_device(self):
-        """Check if a GPU is available and return the appropriate device."""
-        if torch.cuda.is_available():
-            return torch.device('cuda')
-        else:
-            return torch.device('cpu')
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     def train(self, loader, model, optim, loss):
         model.to(self.device)
@@ -87,6 +79,9 @@ class Trainer:
     def run(self):
         # Load the dataset
         dataset = RatingsDataset(datafile='data/movielens100k.csv')
+        rt = dataset.csv
+        rt['user_id'] = rt['user_id'] - 1
+        rt['movie_id_ml'] = rt['movie_id_ml'] - 1
         
         # Split into train, validation, and test sets
         train_dataset, val_dataset, test_dataset = dataset.train_test_val_split(train_ratio=0.6, val_ratio=0.2)
@@ -99,13 +94,13 @@ class Trainer:
         if self.model_name == "model1":
             model = NCF(self.user_number, self.movie_number)
         elif self.model_name == "model2":
-            model = NGCF(self.user_number, self.movie_number)
+            model = NGCF(self.user_number, self.movie_number, rt)
         else:
             raise ValueError("Invalid model name")
 
         # Define optimizer and loss function
         optim = torch.optim.Adam(model.parameters(), lr=0.001)
-        loss = torch.nn.CrossEntropyLoss()  # Changed to CrossEntropyLoss for discrete ratings
+        loss = torch.nn.L1Loss()  # Changed to L1Loss for regression scenario
 
         # Training loop
         for epoch in range(1, self.epochs + 1):
@@ -145,8 +140,34 @@ class Trainer:
         print("Model 1 - NDCG:", history_model1['val_ndcgs'][-1])
         print("Model 2 - NDCG:", history_model2['val_ndcgs'][-1])
 
+        # Plot loss evolution
+        plt.figure(figsize=(12, 5))
+        plt.subplot(1, 2, 1)
+        plt.plot(history_model1['train_loss'], label='Model 1 Train Loss', color='blue')
+        plt.plot(history_model2['train_loss'], label='Model 2 Train Loss', color='orange')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.title('Training Loss Evolution')
+        plt.legend()
 
-if __name__ == '__main__':
-    trainer = Trainer(model_name="model1", user_number=6040, movie_number=3952, epochs=10)
-    trainer.run()
-    trainer.compare_models(trainer.history, trainer.history)
+        # Plot validation loss
+        plt.subplot(1, 2, 2)
+        plt.plot(history_model1['val_accuracies'], label='Model 1 Validation Accuracy', color='blue')
+        plt.plot(history_model2['val_accuracies'], label='Model 2 Validation Accuracy', color='orange')
+        plt.xlabel('Epoch')
+        plt.ylabel('Accuracy')
+        plt.title('Validation Accuracy Evolution')
+        plt.legend()
+
+        plt.tight_layout()
+        plt.show()
+
+        # Plot time per epoch
+        plt.figure(figsize=(6, 4))
+        plt.plot(history_model1['times'], label='Model 1 Time per Epoch', color='blue')
+        plt.plot(history_model2['times'], label='Model 2 Time per Epoch', color='orange')
+        plt.xlabel('Epoch')
+        plt.ylabel('Time (seconds)')
+        plt.title('Time per Epoch Evolution')
+        plt.legend()
+        plt.show()
