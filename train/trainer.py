@@ -5,9 +5,11 @@ import torch
 from torch.utils.data import DataLoader
 from models.NCF import NCF
 from models.NGCF import NGCF
+from models.LightGCN import LightGCN
 from utils.load_data import RatingsDataset
 import torch.nn.functional as F
 from utils.metrics import *
+
 from tqdm import tqdm  # Import tqdm for progress bars
 
 
@@ -21,6 +23,11 @@ class Trainer:
                         'val_accuracies': [], 'val_precisions': [], 'val_recalls': [], 'val_f1_scores': [], 
                         'val_maps': [], 'val_ndcgs': []}
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        self.model = NCF(self.user_number, self.movie_number)
+
+        
+
 
     def train(self, loader, model, optim, loss):
         model.to(self.device)
@@ -78,7 +85,7 @@ class Trainer:
 
     def run(self):
         # Load the dataset
-        dataset = RatingsDataset(datafile='data/movielens100k.csv')
+        dataset = RatingsDataset(datafile='Data/movielens100k.csv')
         rt = dataset.csv
         rt['user_id'] = rt['user_id'] - 1
         rt['movie_id_ml'] = rt['movie_id_ml'] - 1
@@ -95,6 +102,8 @@ class Trainer:
             model = NCF(self.user_number, self.movie_number)
         elif self.model_name == "model2":
             model = NGCF(self.user_number, self.movie_number, rt)
+        elif self.model_name == "model3":
+            model = LightGCN(self.user_number, self.movie_number, rt)
         else:
             raise ValueError("Invalid model name")
 
