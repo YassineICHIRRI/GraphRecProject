@@ -40,7 +40,8 @@ class Trainer:
             optim.zero_grad()
             prediction = model(batch['user'].to(self.device), batch['movie'].to(self.device))
             loss_value = loss(prediction, batch['rating'].float().to(self.device))
-            loss_value.backward()
+            loss_value.backward
+
             optim.step()
             ls += loss_value.item()
             all_predictions.append(prediction.cpu().detach().numpy())
@@ -108,8 +109,9 @@ class Trainer:
             raise ValueError("Invalid model name")
 
         # Define optimizer and loss function
-        optim = torch.optim.Adam(model.parameters(), lr=0.001)
-        loss = torch.nn.L1Loss()  # Changed to L1Loss for regression scenario
+        optim = torch.optim.Adam(model.parameters(), lr=1e-3)
+        loss = torch.nn.MSELoss()  # Mean Squared Error is better suited for regression
+
 
         # Training loop
         for epoch in range(1, self.epochs + 1):
